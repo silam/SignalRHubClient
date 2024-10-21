@@ -1,0 +1,100 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.SignalR.Client
+
+<PageTitle>Home</PageTitle>
+<h1>Blazor WebAssembly Client</h1>
+
+<h3>ConnectionID: @connectionId</h3>
+<div class="row" style="padding-top:50px;">
+    <div class="col-md-4">
+        <div class="control-group">
+            <div>
+                <label for="broadcastMsg">Message</label>
+                <input @bind="message" typeof="text"
+                    id="broadcastMsg" name="broadcastMsg">
+                </input>
+            </div>
+            <button @onclick="BroadcastMessage"
+                disabled="@(!IsConnected)"> Broadcast
+
+            </button>
+
+            <br />
+            <button @onclick="SendToGroup"
+                    disabled="@(!IsConnected)">
+                Send to Group
+
+            </button>
+
+            <br/>
+            <button @onclick="AddUserToGroup"
+                    disabled="@(!IsConnected)">
+                Add User to Group
+
+            </button>
+
+            <br />
+            <button @onclick="RemoveUserFromGroup"
+                    disabled="@(!IsConnected)">
+                Remove User from Group
+
+            </button>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <p>Signal R Messages</p>
+        <pre>
+            @foreach (var message in messages)
+            {
+                @message<br/>
+            }
+        </pre>
+
+    </div>
+</div>
+
+@code {
+    private HubConnection hubConnection;
+    private List<string> messages = new List<string>();
+    private string? message;
+    private string? connectionId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // building hubconnectin object
+        hubConnection = new HubConnectionBuilder()
+                .WithUrl("https://localhost:7293/learningHub")
+                .Build();
+        
+
+        //Register ReceiveMessage event,
+        // add message to the collection
+        hubConnection.On<string>("ReceiveMessage", (message) =>
+                {
+                    messages.Add(message);
+                    StateHasChanged();
+                }
+        );
+
+        await hubConnection.StartAsync();
+        connectionId = hubConnection.ConnectionId;
+
+    }
+
+    // Call BroadcastMessage when click button
+    private async Task BroadcastMessage() => await hubConnection.SendAsync("BroadcastMessage", message);
+
+    public bool IsConnected => hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync() => await hubConnection.DisposeAsync();
+   
+    private async Task SendToGroup() => await hubConnection.SendAsync("SendToGroup", "100", message);
+
+
+    private async Task AddUserToGroup() => await hubConnection.SendAsync("AddUserToGroup", "100");
+
+    private async Task RemoveUserFromGroup() => await hubConnection.SendAsync("RemoveUserFromGroup", "100");
+
+
+}
